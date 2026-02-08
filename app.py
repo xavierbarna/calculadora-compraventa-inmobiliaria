@@ -4,7 +4,7 @@ from datetime import date
 
 st.set_page_config(page_title="InmoReal AI Pro", page_icon="🏢", layout="wide")
 
-# Diccionario de barrios para los desplegables
+# Diccionario de barrios (¡Ahora corregido para que Compra y Venta sean independientes!)
 ZONAS = {
     "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts"],
     "Madrid": ["Salamanca", "Chamberí", "Retiro", "Tetuán", "Hortaleza", "Usera", "Arganzuela"],
@@ -18,13 +18,14 @@ ITP_DICT = {
 }
 
 def consultar_ia(prompt, api_key):
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
     try:
+        genai.configure(api_key=api_key)
+        # CAMBIO CLAVE: Usamos el modelo 1.5 flash
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error en la consulta: {str(e)}"
 
 # --- INTERFAZ ---
 st.title("⚖️ Estrategia de Inversión Inmobiliaria Inteligente")
@@ -39,58 +40,67 @@ with st.sidebar:
     bar_v = st.selectbox("Barrio Venta", ZONAS[pob_v])
     m2_v = st.number_input("M2 del piso actual", value=100)
     
+    st.divider()
     st.header("2. Datos de Compra")
     ccaa_c = st.selectbox("CCAA Compra", list(ITP_DICT.keys()), index=2)
     pob_c = st.selectbox("Ciudad Compra", list(ZONAS.keys()), index=3)
     bar_c = st.selectbox("Barrio Destino", ZONAS[pob_c])
     
+    st.divider()
     st.header("3. Estrategia")
-    pct_reinv = st.slider("% de reinversión del neto", 10, 100, 80)
+    pct_reinv = st.slider("% de reinversión del neto para la compra", 10, 100, 80)
     comision_inmo = st.number_input("% Comisión Inmobiliaria", value=3.0)
 
 if st.button("ANALIZAR OPERACIÓN"):
     if not mi_api:
-        st.error("Introduce la API Key.")
+        st.error("Por favor, introduce tu API Key en la barra lateral.")
     else:
-        with st.spinner('Consultando mercado...'):
-            # Prompt 1: Obtener precio m2 real
-            p1 = f"Dame SOLO el número del precio medio de cierre real por m2 en {bar_v}, {pob_v} en 2024. No des texto, solo el número."
+        with st.spinner('Analizando mercado con Gemini 1.5...'):
+            # Prompt para el precio de venta (más agresivo para evitar fallos)
+            p1 = f"Precio medio REAL de cierre por m2 en {bar_v}, {pob_v} (España) en 2024. Responde SOLO con el número, sin texto."
             res_p1 = consultar_ia(p1, mi_api)
             
             try:
                 precio_m2_v = float(''.join(filter(lambda x: x.isdigit() or x == '.', res_p1)))
             except:
-                precio_m2_v = 5500.0 # Valor coherente para Sant Antoni si falla la IA
+                precio_m2_v = 5500.0 # Valor de rescate coherente para BCN/MAD
 
             # Cálculos Financieros
             v_total = precio_m2_v * m2_v
-            gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.02) + 1500 # Inmo + Plusvalía est + Notaría
+            # Gastos: Inmo + Plusvalía Mun (est 2%) + Notaría/Registro (est 1.5k)
+            gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.025) + 1500
             neto_disponible = v_total - gastos_v
             
             presupuesto_compra_total = neto_disponible * (pct_reinv / 100)
-            ahorro_liquido = neto_venta = neto_disponible - presupuesto_compra_total
+            ahorro_liquido = neto_disponible - presupuesto_compra_total
             
-            # Cálculo del valor del inmueble destino (restando ITP y Gastos)
-            coste_adquisicion = ITP_DICT[ccaa_c] + 0.015 # ITP + 1.5% gastos
-            valor_max_piso = presupuesto_compra_total / (1 + coste_adquisicion)
+            # Cálculo de lo que se puede pagar por el piso (restando ITP y gastos de la CCAA destino)
+            tasa_impuestos_compra = ITP_DICT[ccaa_c] + 0.015 # ITP + 1.5% notaría/registro
+            valor_max_inmueble = presupuesto_compra_total / (1 + tasa_impuestos_compra)
 
-            # Prompt 2: Recomendación de producto inmobiliario
-            p2 = f"""Con un presupuesto de {valor_max_piso:,.0f} euros en el barrio de {bar_c}, {pob_c}, 
-            ¿qué tipo de vivienda puedo comprar? Sé específico: nº habitaciones, m2, si incluye garaje o trastero, 
-            y estado de la finca. Da 2 opciones realistas."""
+            # Prompt para la recomendación descriptiva
+            p2 = f"""En el barrio de {bar_c}, {pob_c}, con un presupuesto total de {valor_max_inmueble:,.0f} euros, 
+            ¿qué tipo de vivienda exacta se puede comprar hoy? Describe metros, habitaciones, estado y si incluye extras como garaje. 
+            Sé muy realista con el mercado actual."""
             recomendacion = consultar_ia(p2, mi_api)
 
             # --- RESULTADOS ---
-            st.success("### Análisis Finalizado")
+            st.success("### Análisis Estratégico Finalizado")
             
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Venta Estimada", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
-            c2.metric("Inversión en Compra", f"{presupuesto_compra_total:,.0f} €", f"{pct_reinv}% del neto")
-            c3.metric("AHORRO EN CAJA", f"{ahorro_liquido:,.0f} €", delta="Líquido")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Venta Estimada", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
+            col2.metric("Disponible para Compra", f"{presupuesto_compra_total:,.0f} €", f"{pct_reinv}% del neto")
+            col3.metric("AHORRO NETO", f"{ahorro_liquido:,.0f} €", delta="Dinero sobrante")
 
             st.divider()
             
-            st.subheader(f"🏠 ¿Qué puedes comprar en {bar_c} con {valor_max_piso:,.0f} €?")
-            st.info(recomendacion)
+            st.subheader(f"🏠 Perfil de vivienda en {bar_c} ({pob_c})")
+            st.markdown(recomendacion)
             
-            st.write(f"*(Nota: Se han reservado {(presupuesto_compra_total - valor_max_piso):,.0f} € para ITP y gastos de escritura)*")
+            with st.expander("Ver desglose de impuestos y gastos"):
+                st.write(f"Venta Bruta: {v_total:,.0f} €")
+                st.write(f"Gastos Venta (Inmo+Impuestos): -{gastos_v:,.0f} €")
+                st.write(f"Neto tras venta: {neto_disponible:,.0f} €")
+                st.write(f"---")
+                st.write(f"Precio del inmueble destino: {valor_max_inmueble:,.0f} €")
+                st.write(f"Impuestos y gastos compra ({ccaa_c}): {presupuesto_compra_total - valor_max_inmueble:,.0f} €")
