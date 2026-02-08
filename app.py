@@ -2,20 +2,29 @@ import streamlit as st
 import google.generativeai as genai
 from datetime import date
 
-st.set_page_config(page_title="InmoReal AI Pro", page_icon="🏢", layout="wide")
+st.set_page_config(page_title="InmoReal AI - Cataluña", page_icon="🏢", layout="wide")
 
-# Diccionario de barrios
-ZONAS = {
-    "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts"],
-    "Madrid": ["Salamanca", "Chamberí", "Retiro", "Tetuán", "Hortaleza", "Usera", "Arganzuela"],
-    "Valencia": ["Ruzafa", "Ciutat Vella", "El Carmen", "Patraix", "Benimaclet", "Campanar"],
-    "Alicante": ["Centro", "Playa de San Juan", "Cabo de las Huertas", "Carolinas", "Benalúa"]
+# --- CONFIGURACIÓN LOCAL (Cataluña) ---
+POBLACIONES = [
+    "Barcelona", 
+    "Gavá", 
+    "Viladecans", 
+    "El Prat de Llobregat", 
+    "Molins de Rei", 
+    "Sant Feliu de Llobregat"
+]
+
+# Barrios por población (puedes ampliar estas listas si lo deseas)
+BARRIOS_POR_POB = {
+    "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts", "Horta", "Sant Martí"],
+    "Gavá": ["Gavá Mar", "Centro", "Bruguers", "Diagonal - Colomeres"],
+    "Viladecans": ["Centro", "Sales", "Alba-rosa", "Torrent Ballester"],
+    "El Prat de Llobregat": ["Centro", "Sant Cosme", "Eixample", "Verge de Montserrat"],
+    "Molins de Rei": ["Centro", "El Canal", "Riera Bonet", "La Granja"],
+    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases"]
 }
 
-ITP_DICT = {
-    "Cataluña": 0.10, "Madrid": 0.06, "Comunidad Valenciana": 0.10, "Andalucía": 0.07,
-    "Aragón": 0.08, "Baleares": 0.08, "Canarias": 0.065, "País Vasco": 0.04
-}
+ITP_CATALUNYA = 0.10  # 10% fijo para Cataluña
 
 def obtener_mejor_modelo(api_key):
     try:
@@ -23,80 +32,93 @@ def obtener_mejor_modelo(api_key):
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
                 return m.name
-        return "models/gemini-pro" # Fallback
+        return "models/gemini-1.5-flash"
     except:
-        return "models/gemini-pro"
+        return "models/gemini-1.5-flash"
 
 def consultar_ia(prompt, api_key):
     try:
-        genai.configure(api_key=api_key)
         nombre_modelo = obtener_mejor_modelo(api_key)
         model = genai.GenerativeModel(nombre_modelo)
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Error técnico tras intentar conectar: {str(e)}"
+        return f"Error técnico: {str(e)}"
 
 # --- INTERFAZ ---
-st.title("⚖️ Estrategia de Inversión Inmobiliaria Inteligente")
+st.title("⚖️ Consultor Inmobiliario: Área de Barcelona")
 
 with st.sidebar:
     mi_api = st.text_input("API Key de Google", type="password")
     st.divider()
     
     st.header("1. Datos de Venta")
-    ccaa_v = st.selectbox("CCAA Venta", list(ITP_DICT.keys()), index=0)
-    pob_v = st.selectbox("Ciudad Venta", list(ZONAS.keys()), index=0)
-    bar_v = st.selectbox("Barrio Venta", ZONAS[pob_v])
-    m2_v = st.number_input("M2 del piso actual", value=100)
+    st.info("📍 Región: Cataluña")
+    pob_v = st.selectbox("Ciudad Venta", POBLACIONES)
+    bar_v = st.selectbox("Barrio Venta", BARRIOS_POR_POB[pob_v])
+    m2_v = st.number_input("M2 del piso actual", value=80)
     
     st.divider()
     st.header("2. Datos de Compra")
-    ccaa_c = st.selectbox("CCAA Compra", list(ITP_DICT.keys()), index=2)
-    pob_c = st.selectbox("Ciudad Compra", list(ZONAS.keys()), index=3)
-    bar_c = st.selectbox("Barrio Destino", ZONAS[pob_c])
+    pob_c = st.selectbox("Ciudad Destino", POBLACIONES, index=1) # Por defecto Gavá
+    bar_c = st.selectbox("Barrio Destino", BARRIOS_POR_POB[pob_c])
     
     st.divider()
     st.header("3. Estrategia")
-    pct_reinv = st.slider("% del neto para comprar", 10, 100, 80)
-    comision_inmo = st.number_input("% Comisión Inmobiliaria Venta", value=3.0)
+    pct_reinv = st.slider("% del neto para reinvertir", 10, 100, 85)
+    comision_inmo = st.number_input("% Comisión Inmo Venta", value=3.0)
 
-if st.button("ANALIZAR OPERACIÓN"):
+if st.button("REALIZAR ANÁLISIS DE MERCADO"):
     if not mi_api:
         st.error("Introduce la API Key.")
     else:
-        with st.spinner('Detectando modelo y analizando mercado...'):
-            # Prompt de precio
-            p1 = f"Dime solo el número del precio medio de cierre m2 en {bar_v}, {pob_v} en 2024. Sin texto."
+        with st.spinner('Analizando mercado local...'):
+            # Prompt para precio venta
+            p1 = f"Dime el precio medio real de cierre m2 en {bar_v}, {pob_v}, Cataluña, en 2024/2025. Responde SOLO con el número."
             res_p1 = consultar_ia(p1, mi_api)
             
             try:
                 precio_m2_v = float(''.join(filter(lambda x: x.isdigit() or x == '.', res_p1)))
             except:
-                precio_m2_v = 5500.0 if "Barcelona" in pob_v else 4000.0
+                precio_m2_v = 4000.0
 
-            # Cálculos
+            # Cálculos Financieros
             v_total = precio_m2_v * m2_v
+            # Gastos venta: Inmo + Plusvalía Mun (2.5%) + Gastos Gestión (1500€)
             gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.025) + 1500
             neto_disponible = v_total - gastos_v
             
             presupuesto_total_compra = neto_disponible * (pct_reinv / 100)
             ahorro_caja = neto_disponible - presupuesto_total_compra
             
-            tasa_compra = ITP_DICT[ccaa_c] + 0.015 
-            valor_max_piso = presupuesto_total_compra / (1 + tasa_compra)
+            # Cálculo valor inmueble destino (ITP 10% + 1.5% gastos)
+            gastos_adquisicion = ITP_CATALUNYA + 0.015
+            valor_max_inmueble = presupuesto_total_compra / (1 + gastos_adquisicion)
 
             # Prompt recomendación
-            p2 = f"Con {valor_max_piso:,.0f}€ en el barrio de {bar_c}, {pob_c}, ¿qué piso puedo comprar? Describe m2, hab y estado."
+            p2 = f"""Como experto inmobiliario en Cataluña: Con un presupuesto de {valor_max_inmueble:,.0f}€ 
+            en el barrio de {bar_c}, {pob_c}, ¿qué tipo de vivienda exacta se puede comprar hoy? 
+            Describe m2, habitaciones, estado típico de la finca y si es habitual que tenga extras como ascensor o balcón."""
             recomendacion = consultar_ia(p2, mi_api)
 
-            # RESULTADOS
-            st.success("### Análisis Estratégico")
+            # --- RESULTADOS ---
+            st.success("### Resultado del Análisis Estratégico")
+            
             c1, c2, c3 = st.columns(3)
-            c1.metric("Venta Bruta", f"{v_total:,.0f} €")
+            c1.metric("Venta Bruta", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
             c2.metric("Para Compra", f"{presupuesto_total_compra:,.0f} €")
-            c3.metric("AHORRO LÍQUIDO", f"{ahorro_caja:,.0f} €")
+            c3.metric("EFECTIVO SOBRANTE", f"{ahorro_caja:,.0f} €", delta="Ahorro líquido")
 
             st.divider()
-            st.subheader(f"🏠 Mercado en {bar_c}")
+            
+            st.subheader(f"🏠 Posibilidades en {bar_c} ({pob_c})")
             st.info(recomendacion)
+            
+            with st.expander("Ver detalle de gastos e impuestos"):
+                st.write(f"**Operación Venta:**")
+                st.write(f"- Gastos e impuestos estim.: {gastos_v:,.0f} €")
+                st.write(f"- Neto obtenido: {neto_disponible:,.0f} €")
+                st.write(f"---")
+                st.write(f"**Operación Compra:**")
+                st.write(f"- Precio máximo del piso: {valor_max_inmueble:,.0f} €")
+                st.write(f"- Impuestos (ITP 10%) y Notaría: {presupuesto_total_compra - valor_max_inmueble:,.0f} €")
