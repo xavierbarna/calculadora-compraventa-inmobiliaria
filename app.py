@@ -17,15 +17,25 @@ ITP_DICT = {
     "Aragón": 0.08, "Baleares": 0.08, "Canarias": 0.065, "País Vasco": 0.04
 }
 
+def obtener_mejor_modelo(api_key):
+    try:
+        genai.configure(api_key=api_key)
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                return m.name
+        return "models/gemini-pro" # Fallback
+    except:
+        return "models/gemini-pro"
+
 def consultar_ia(prompt, api_key):
     try:
         genai.configure(api_key=api_key)
-        # Intentamos con el nombre técnico completo que es más estable
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        nombre_modelo = obtener_mejor_modelo(api_key)
+        model = genai.GenerativeModel(nombre_modelo)
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Error técnico: {str(e)}"
+        return f"Error técnico tras intentar conectar: {str(e)}"
 
 # --- INTERFAZ ---
 st.title("⚖️ Estrategia de Inversión Inmobiliaria Inteligente")
@@ -48,64 +58,45 @@ with st.sidebar:
     
     st.divider()
     st.header("3. Estrategia")
-    pct_reinv = st.slider("% del neto para reinvertir en la compra", 10, 100, 80)
+    pct_reinv = st.slider("% del neto para comprar", 10, 100, 80)
     comision_inmo = st.number_input("% Comisión Inmobiliaria Venta", value=3.0)
 
 if st.button("ANALIZAR OPERACIÓN"):
     if not mi_api:
-        st.error("Introduce la API Key en la barra lateral.")
+        st.error("Introduce la API Key.")
     else:
-        with st.spinner('Consultando mercado en tiempo real...'):
-            # Prompt de precio de venta
-            p1 = f"Precio medio REAL de cierre por m2 en {bar_v}, {pob_v} (España) en 2024. Responde exclusivamente con el número."
+        with st.spinner('Detectando modelo y analizando mercado...'):
+            # Prompt de precio
+            p1 = f"Dime solo el número del precio medio de cierre m2 en {bar_v}, {pob_v} en 2024. Sin texto."
             res_p1 = consultar_ia(p1, mi_api)
             
             try:
-                # Extraemos el número por si la IA añade texto extra
                 precio_m2_v = float(''.join(filter(lambda x: x.isdigit() or x == '.', res_p1)))
             except:
-                precio_m2_v = 5500.0 # Valor coherente para Sant Antoni
+                precio_m2_v = 5500.0 if "Barcelona" in pob_v else 4000.0
 
-            # Cálculos Financieros
+            # Cálculos
             v_total = precio_m2_v * m2_v
-            # Gastos de salida (Inmo + Plusvalía Mun est. + Gastos fijos)
             gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.025) + 1500
             neto_disponible = v_total - gastos_v
             
-            # Aplicamos el porcentaje de reinversión elegido
             presupuesto_total_compra = neto_disponible * (pct_reinv / 100)
             ahorro_caja = neto_disponible - presupuesto_total_compra
             
-            # Cálculo del valor neto del inmueble (restando ITP y gastos de la CCAA destino)
-            tasa_impuestos_compra = ITP_DICT[ccaa_c] + 0.015 
-            valor_max_inmueble = presupuesto_total_compra / (1 + tasa_impuestos_compra)
+            tasa_compra = ITP_DICT[ccaa_c] + 0.015 
+            valor_max_piso = presupuesto_total_compra / (1 + tasa_compra)
 
-            # Prompt de recomendación descriptiva
-            p2 = f"""En el barrio de {bar_c}, {pob_c}, con un presupuesto para el inmueble de {valor_max_inmueble:,.0f} euros, 
-            describe qué tipo de vivienda se puede comprar. Incluye: m2 aproximados, número de habitaciones, 
-            si es posible que tenga garaje o terraza y el estado general de la finca."""
+            # Prompt recomendación
+            p2 = f"Con {valor_max_piso:,.0f}€ en el barrio de {bar_c}, {pob_c}, ¿qué piso puedo comprar? Describe m2, hab y estado."
             recomendacion = consultar_ia(p2, mi_api)
 
-            # --- RESULTADOS ---
-            st.success("### Análisis Estratégico Finalizado")
-            
+            # RESULTADOS
+            st.success("### Análisis Estratégico")
             c1, c2, c3 = st.columns(3)
-            c1.metric("Venta Estimada", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
-            c2.metric("Para invertir en compra", f"{presupuesto_total_compra:,.0f} €", f"{pct_reinv}% del neto")
-            c3.metric("EFECTIVO SOBRANTE", f"{ahorro_caja:,.0f} €", delta="Ahorro líquido")
+            c1.metric("Venta Bruta", f"{v_total:,.0f} €")
+            c2.metric("Para Compra", f"{presupuesto_total_compra:,.0f} €")
+            c3.metric("AHORRO LÍQUIDO", f"{ahorro_caja:,.0f} €")
 
             st.divider()
-            
-            st.subheader(f"🏠 Posibilidades en {bar_c} ({pob_c})")
+            st.subheader(f"🏠 Mercado en {bar_c}")
             st.info(recomendacion)
-            
-            with st.expander("Ver detalle de la operación"):
-                st.write(f"**Venta en {bar_v}:**")
-                st.write(f"- Valor bruto: {v_total:,.0f} €")
-                st.write(f"- Gastos e impuestos venta: {gastos_v:,.0f} €")
-                st.write(f"- Neto resultante: {neto_disponible:,.0f} €")
-                st.write(f"---")
-                st.write(f"**Compra en {bar_c}:**")
-                st.write(f"- Presupuesto total (Inmueble + Gastos): {presupuesto_total_compra:,.0f} €")
-                st.write(f"- Valor máximo del piso: {valor_max_inmueble:,.0f} €")
-                st.write(f"- Reserva para ITP y Gastos: {presupuesto_total_compra - valor_max_inmueble:,.0f} €")
