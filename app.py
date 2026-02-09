@@ -62,14 +62,9 @@ if st.button("REALIZAR ANÁLISIS DE MERCADO"):
     if not mi_api:
         st.error("Introduce la API Key.")
     else:
-        with st.spinner('Calculando con ajuste del 8% sobre oferta...'):
-            # Lógica de precio ajustado
-            prompt_precio = f"""
-            Como experto inmobiliario en Cataluña: 
-            1. Busca el precio medio de oferta actual en portales para {bar_v}, {pob_v}. 
-            2. Aplica una reducción del 8% por margen de negociación. 
-            3. Responde SOLO con el número final por m2.
-            """
+        with st.spinner('Analizando mercado local...'):
+            # Volvemos al prompt original que funcionaba bien
+            prompt_precio = f"Dime solo el número del precio medio de cierre m2 real en {bar_v}, {pob_v}, Cataluña, en 2024/2025. Sin texto adicional."
             res_p1 = consultar_ia(prompt_precio, mi_api)
             
             try:
@@ -77,7 +72,7 @@ if st.button("REALIZAR ANÁLISIS DE MERCADO"):
             except:
                 precio_m2_v = 4500.0
 
-            # Cálculos
+            # Cálculos Financieros
             v_total = precio_m2_v * m2_v
             gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.025) + 1500
             neto_disponible = v_total - gastos_v
@@ -87,8 +82,8 @@ if st.button("REALIZAR ANÁLISIS DE MERCADO"):
             gastos_adquisicion = ITP_CATALUNYA + 0.015
             valor_max_inmueble = presupuesto_total_compra / (1 + gastos_adquisicion)
 
-            # Recomendación
-            prompt_rec = f"Presupuesto {valor_max_inmueble:,.0f}€ en {bar_c}, {pob_c}. ¿Qué puedo comprar? (m2, hab, estado)."
+            # Recomendación descriptiva
+            prompt_rec = f"Con un presupuesto de {valor_max_inmueble:,.0f}€ en el barrio de {bar_c}, {pob_c}, ¿qué tipo de vivienda se puede comprar? Describe m2, hab y estado."
             recomendacion = consultar_ia(prompt_rec, mi_api)
 
             # --- RESULTADOS ---
@@ -96,17 +91,24 @@ if st.button("REALIZAR ANÁLISIS DE MERCADO"):
             c1, c2, c3 = st.columns(3)
             c1.metric("Venta Bruta", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
             c2.metric("Para Compra", f"{presupuesto_total_compra:,.0f} €")
-            c3.metric("AHORRO LÍQUIDO", f"{ahorro_caja:,.0f} €")
+            c3.metric("AHORRO LÍQUIDO", f"{ahorro_caja:,.0f} €", delta="Efectivo sobrante")
 
             st.divider()
             st.subheader(f"🏠 Posibilidades en {bar_c}")
             st.info(recomendacion)
 
             # --- BOTÓN WHATSAPP ---
-            texto_wa = f"Análisis Inmobiliario:\n- Venta en {bar_v}: {v_total:,.0f}€\n- Neto disponible: {neto_disponible:,.0f}€\n- Presupuesto compra: {presupuesto_total_compra:,.0f}€\n- Ahorro final: {ahorro_caja:,.0f}€"
+            texto_wa = (
+                f"*Análisis Inmobiliario Cataluña*\n\n"
+                f"📍 *Venta:* {bar_v} ({pob_v})\n"
+                f"💰 *Valor Venta:* {v_total:,.0f}€\n"
+                f"💶 *Neto tras gastos:* {neto_disponible:,.0f}€\n\n"
+                f"🏠 *Inversión en {pob_c}:* {presupuesto_total_compra:,.0f}€\n"
+                f"🏦 *Ahorro en Caja:* {ahorro_caja:,.0f}€"
+            )
             wa_link = f"https://wa.me/?text={quote(texto_wa)}"
             st.markdown(f'[![Compartir en WhatsApp](https://img.shields.io/badge/Compartir_por-WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)]({wa_link})')
 
-            with st.expander("Ver detalle técnico"):
-                st.write(f"Precio m2 tras descuento 8%: {precio_m2_v:,.0f}€")
-                st.write(f"Impuestos compra reservados: {presupuesto_total_compra - valor_max_inmueble:,.0f}€")
+            with st.expander("Ver desglose"):
+                st.write(f"Impuestos y Notaría reservados: {presupuesto_total_compra - valor_max_inmueble:,.0f}€")
+                st.write(f"Valor máximo del piso a buscar: {valor_max_inmueble:,.0f}€")
