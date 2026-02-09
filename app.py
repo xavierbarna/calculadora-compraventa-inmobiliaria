@@ -1,30 +1,22 @@
 import streamlit as st
 import google.generativeai as genai
-from datetime import date
+from urllib.parse import quote
 
 st.set_page_config(page_title="InmoReal AI - Cataluña", page_icon="🏢", layout="wide")
 
-# --- CONFIGURACIÓN LOCAL (Cataluña) ---
-POBLACIONES = [
-    "Barcelona", 
-    "Gavá", 
-    "Viladecans", 
-    "El Prat de Llobregat", 
-    "Molins de Rei", 
-    "Sant Feliu de Llobregat"
-]
+# --- CONFIGURACIÓN LOCAL ---
+POBLACIONES = ["Barcelona", "Gavá", "Viladecans", "El Prat de Llobregat", "Molins de Rei", "Sant Feliu de Llobregat"]
 
-# Barrios por población (puedes ampliar estas listas si lo deseas)
 BARRIOS_POR_POB = {
-    "Barcelona": ["Sant Antoni", "Eixample", "L'Antiga Esquerra de l'Eixample", "La Nova Esquerra de l'Eixample"],
-    "Gavá": ["Gavá Mar", "Centre", "Bruguers", "Diagonal", "Les Colomeres", "Bobiles", "Can Tintorer", "Can Tries"],
-    "Viladecans": ["Centre", "Barri Antic", "Alba-rosa", "Torrent Ballester", "Campreciós", "Torre Roja", "La Roureda", "Llevant"],
-    "El Prat de Llobregat": ["Centre", "Eixample", "Plaça de Catalunya", "Sant Jordi", "Estación"],
-    "Molins de Rei": ["Centre", "El Canal", "Riera Bonet", "La Granja"],
-    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases", "Can Calders", "La Salut"]
+    "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts", "Horta", "Sant Martí"],
+    "Gavá": ["Gavá Mar", "Centro", "Bruguers", "Diagonal - Colomeres"],
+    "Viladecans": ["Centro", "Sales", "Alba-rosa", "Torrent Ballester"],
+    "El Prat de Llobregat": ["Centro", "Eixample", "Verge de Montserrat"],
+    "Molins de Rei": ["Centro", "El Canal", "Riera Bonet", "La Granja"],
+    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases"]
 }
 
-ITP_CATALUNYA = 0.10  # 10% fijo para Cataluña
+ITP_CATALUNYA = 0.10
 
 def obtener_mejor_modelo(api_key):
     try:
@@ -51,16 +43,14 @@ st.title("⚖️ Consultor Inmobiliario: Área de Barcelona")
 with st.sidebar:
     mi_api = st.text_input("API Key de Google", type="password")
     st.divider()
-    
     st.header("1. Datos de Venta")
-    st.info("📍 Región: Cataluña")
     pob_v = st.selectbox("Ciudad Venta", POBLACIONES)
     bar_v = st.selectbox("Barrio Venta", BARRIOS_POR_POB[pob_v])
     m2_v = st.number_input("M2 del piso actual", value=80)
     
     st.divider()
     st.header("2. Datos de Compra")
-    pob_c = st.selectbox("Ciudad Destino", POBLACIONES, index=1) # Por defecto Gavá
+    pob_c = st.selectbox("Ciudad Destino", POBLACIONES, index=1)
     bar_c = st.selectbox("Barrio Destino", BARRIOS_POR_POB[pob_c])
     
     st.divider()
@@ -72,53 +62,51 @@ if st.button("REALIZAR ANÁLISIS DE MERCADO"):
     if not mi_api:
         st.error("Introduce la API Key.")
     else:
-        with st.spinner('Analizando mercado local...'):
-            # Prompt para precio venta
-            p1 = f"Dime el precio medio real de cierre m2 en {bar_v}, {pob_v}, Cataluña, en 2024/2025. Responde SOLO con el número."
-            res_p1 = consultar_ia(p1, mi_api)
+        with st.spinner('Calculando con ajuste del 8% sobre oferta...'):
+            # Lógica de precio ajustado
+            prompt_precio = f"""
+            Como experto inmobiliario en Cataluña: 
+            1. Busca el precio medio de oferta actual en portales para {bar_v}, {pob_v}. 
+            2. Aplica una reducción del 8% por margen de negociación. 
+            3. Responde SOLO con el número final por m2.
+            """
+            res_p1 = consultar_ia(prompt_precio, mi_api)
             
             try:
                 precio_m2_v = float(''.join(filter(lambda x: x.isdigit() or x == '.', res_p1)))
             except:
-                precio_m2_v = 4000.0
+                precio_m2_v = 4500.0
 
-            # Cálculos Financieros
+            # Cálculos
             v_total = precio_m2_v * m2_v
-            # Gastos venta: Inmo + Plusvalía Mun (2.5%) + Gastos Gestión (1500€)
             gastos_v = (v_total * (comision_inmo/100)) + (v_total * 0.025) + 1500
             neto_disponible = v_total - gastos_v
-            
             presupuesto_total_compra = neto_disponible * (pct_reinv / 100)
             ahorro_caja = neto_disponible - presupuesto_total_compra
             
-            # Cálculo valor inmueble destino (ITP 10% + 1.5% gastos)
             gastos_adquisicion = ITP_CATALUNYA + 0.015
             valor_max_inmueble = presupuesto_total_compra / (1 + gastos_adquisicion)
 
-            # Prompt recomendación
-            p2 = f"""Como experto inmobiliario en Cataluña: Con un presupuesto de {valor_max_inmueble:,.0f}€ 
-            en el barrio de {bar_c}, {pob_c}, ¿qué tipo de vivienda exacta se puede comprar hoy? 
-            Describe m2, habitaciones, estado típico de la finca y si es habitual que tenga extras como ascensor o balcón."""
-            recomendacion = consultar_ia(p2, mi_api)
+            # Recomendación
+            prompt_rec = f"Presupuesto {valor_max_inmueble:,.0f}€ en {bar_c}, {pob_c}. ¿Qué puedo comprar? (m2, hab, estado)."
+            recomendacion = consultar_ia(prompt_rec, mi_api)
 
             # --- RESULTADOS ---
-            st.success("### Resultado del Análisis Estratégico")
-            
+            st.success("### Análisis Estratégico Finalizado")
             c1, c2, c3 = st.columns(3)
             c1.metric("Venta Bruta", f"{v_total:,.0f} €", f"{precio_m2_v:,.0f} €/m2")
             c2.metric("Para Compra", f"{presupuesto_total_compra:,.0f} €")
-            c3.metric("EFECTIVO SOBRANTE", f"{ahorro_caja:,.0f} €", delta="Ahorro líquido")
+            c3.metric("AHORRO LÍQUIDO", f"{ahorro_caja:,.0f} €")
 
             st.divider()
-            
-            st.subheader(f"🏠 Posibilidades en {bar_c} ({pob_c})")
+            st.subheader(f"🏠 Posibilidades en {bar_c}")
             st.info(recomendacion)
-            
-            with st.expander("Ver detalle de gastos e impuestos"):
-                st.write(f"**Operación Venta:**")
-                st.write(f"- Gastos e impuestos estim.: {gastos_v:,.0f} €")
-                st.write(f"- Neto obtenido: {neto_disponible:,.0f} €")
-                st.write(f"---")
-                st.write(f"**Operación Compra:**")
-                st.write(f"- Precio máximo del piso: {valor_max_inmueble:,.0f} €")
-                st.write(f"- Impuestos (ITP 10%) y Notaría: {presupuesto_total_compra - valor_max_inmueble:,.0f} €")
+
+            # --- BOTÓN WHATSAPP ---
+            texto_wa = f"Análisis Inmobiliario:\n- Venta en {bar_v}: {v_total:,.0f}€\n- Neto disponible: {neto_disponible:,.0f}€\n- Presupuesto compra: {presupuesto_total_compra:,.0f}€\n- Ahorro final: {ahorro_caja:,.0f}€"
+            wa_link = f"https://wa.me/?text={quote(texto_wa)}"
+            st.markdown(f'[![Compartir en WhatsApp](https://img.shields.io/badge/Compartir_por-WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)]({wa_link})')
+
+            with st.expander("Ver detalle técnico"):
+                st.write(f"Precio m2 tras descuento 8%: {precio_m2_v:,.0f}€")
+                st.write(f"Impuestos compra reservados: {presupuesto_total_compra - valor_max_inmueble:,.0f}€")
