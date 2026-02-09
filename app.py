@@ -8,12 +8,12 @@ st.set_page_config(page_title="InmoReal AI - Cataluña", page_icon="🏢", layou
 POBLACIONES = ["Barcelona", "Gavá", "Viladecans", "El Prat de Llobregat", "Molins de Rei", "Sant Feliu de Llobregat"]
 
 BARRIOS_POR_POB = {
-    "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts", "Horta", "Sant Martí"],
+    "Barcelona": ["Sant Antoni", "Eixample", "La Nova Esquerra de l'Eixample", "L'Antiga Esquerra de l'Eixample"],
     "Gavá": ["Gavá Mar", "Centre", "Bruguers", "Diagonal", "Les Colomeres", "Bobiles", "Bruguers", "La Sentiu", "Can Tintorer", "Can Tries"],
     "Viladecans": ["Centre", "Sales", "Albarrosa", "Torrent Ballester", "Barri Antic", "Campreciós", "Torre Roja", "La Roureda", "Llevant", "Parc Empresarial"],
-    "El Prat de Llobregat": ["Centro", "Eixample", "Verge de Montserrat"],
-    "Molins de Rei": ["Centro", "El Canal", "Riera Bonet", "La Granja"],
-    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases"]
+    "El Prat de Llobregat": ["Centre", "Eixample", "Verge de Montserrat", "Onze de Setembre", "Sant Jordi", "Plaça de Catalunya", "Zona Estación", "Casco Antiguo"],
+    "Molins de Rei": ["Centre", "El Canal", "Riera Bonet", "La Granja"],
+    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases", "Can Calders", "El Pla", "Roses", "Castellbell"]
 }
 
 ITP_CATALUNYA = 0.10
