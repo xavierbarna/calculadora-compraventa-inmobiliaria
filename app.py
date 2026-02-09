@@ -16,12 +16,12 @@ POBLACIONES = [
 
 # Barrios por población (puedes ampliar estas listas si lo deseas)
 BARRIOS_POR_POB = {
-    "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts", "Horta", "Sant Martí"],
-    "Gavá": ["Gavá Mar", "Centro", "Bruguers", "Diagonal - Colomeres"],
-    "Viladecans": ["Centro", "Sales", "Alba-rosa", "Torrent Ballester"],
-    "El Prat de Llobregat": ["Centro", "Sant Cosme", "Eixample", "Verge de Montserrat"],
-    "Molins de Rei": ["Centro", "El Canal", "Riera Bonet", "La Granja"],
-    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases"]
+    "Barcelona": ["Sant Antoni", "Eixample"],
+    "Gavá": ["Gavá Mar", "Centre", "Bruguers", "Diagonal", "Les Colomeres", "Bobiles", "Can Tintorer", "Can Tries"],
+    "Viladecans": ["Centre", "Barri Antic", "Alba-rosa", "Torrent Ballester", "Campreciós", "Torre Roja", "La Roureda", "Llevant"],
+    "El Prat de Llobregat": ["Centre", "Eixample", "Plaça de Catalunya", "Sant Jordi", "Estación"],
+    "Molins de Rei": ["Centre", "El Canal", "Riera Bonet", "La Granja"],
+    "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases", "Can Calders", "La Salut"]
 }
 
 ITP_CATALUNYA = 0.10  # 10% fijo para Cataluña
