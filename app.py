@@ -9,8 +9,8 @@ POBLACIONES = ["Barcelona", "Gavá", "Viladecans", "El Prat de Llobregat", "Moli
 
 BARRIOS_POR_POB = {
     "Barcelona": ["Sant Antoni", "Eixample", "Gràcia", "Poblenou", "Sarrià", "Sants", "Les Corts", "Horta", "Sant Martí"],
-    "Gavá": ["Gavá Mar", "Centro", "Bruguers", "Diagonal - Colomeres"],
-    "Viladecans": ["Centro", "Sales", "Alba-rosa", "Torrent Ballester"],
+    "Gavá": ["Gavá Mar", "Centre", "Bruguers", "Diagonal", "Les Colomeres", "Bobiles", "Bruguers", "La Sentiu", "Can Tintorer", "Can Tries"],
+    "Viladecans": ["Centre", "Sales", "Alba-rosa", "Torrent Ballester", "Barri Antic", "Campreciós", "Torre Roja", "La Roureda", "Llevant", "Parc Empresarial"],
     "El Prat de Llobregat": ["Centro", "Eixample", "Verge de Montserrat"],
     "Molins de Rei": ["Centro", "El Canal", "Riera Bonet", "La Granja"],
     "Sant Feliu de Llobregat": ["Centre", "Mas Lluí", "Can Maginàs", "Les Grases"]
