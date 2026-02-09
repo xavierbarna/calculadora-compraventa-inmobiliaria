@@ -16,7 +16,7 @@ POBLACIONES = [
 
 # Barrios por población (puedes ampliar estas listas si lo deseas)
 BARRIOS_POR_POB = {
-    "Barcelona": ["Sant Antoni", "Eixample"],
+    "Barcelona": ["Sant Antoni", "Eixample", "L'Antiga Esquerra de l'Eixample", "La Nova Esquerra de l'Eixample"],
     "Gavá": ["Gavá Mar", "Centre", "Bruguers", "Diagonal", "Les Colomeres", "Bobiles", "Can Tintorer", "Can Tries"],
     "Viladecans": ["Centre", "Barri Antic", "Alba-rosa", "Torrent Ballester", "Campreciós", "Torre Roja", "La Roureda", "Llevant"],
     "El Prat de Llobregat": ["Centre", "Eixample", "Plaça de Catalunya", "Sant Jordi", "Estación"],
